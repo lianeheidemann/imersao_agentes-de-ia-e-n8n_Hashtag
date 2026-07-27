@@ -1,242 +1,279 @@
-# Como abrir um projeto do n8n usando Docker Desktop
+# Execução local do n8n com Docker Desktop
 
-Este guia explica como acessar o n8n executado localmente pelo Docker Desktop e importar um workflow criado em outra instalação do n8n.
+Este documento descreve uma configuração local reproduzível do n8n no Windows com Docker Desktop, persistência de dados, importação de workflows e práticas mínimas de segurança.
 
-> O n8n aberto pelo Docker é uma instalação separada do n8n Cloud ou de qualquer outra instância usada anteriormente. Por isso, os workflows antigos não aparecem automaticamente: é necessário exportá-los e importá-los.
+## 1. Arquitetura local
 
-## 1. Confirmar que o container está em execução
+A configuração utiliza:
 
-Abra o **Docker Desktop** e acesse **Containers**.
+- Docker Desktop com backend WSL 2;
+- imagem oficial `docker.n8n.io/n8nio/n8n`;
+- porta HTTP local `5678`;
+- volume nomeado para persistir o diretório `/home/node/.n8n`;
+- chave de criptografia definida fora do repositório;
+- fuso horário `America/Belem`.
 
-O container do n8n deve aparecer com o status **Running**. Na tela de logs, procure uma mensagem semelhante a:
+O diretório `/home/node/.n8n` contém dados importantes da instância, incluindo configuração, banco local e credenciais criptografadas. Executar o container sem volume persistente pode causar perda de dados ao removê-lo.
+
+## 2. Pré-requisitos
+
+No PowerShell, confirme as instalações:
+
+```powershell
+docker --version
+docker compose version
+```
+
+Confirme também que o Docker Desktop está com o engine ativo.
+
+## 3. Estrutura local recomendada
+
+Crie uma pasta fora do repositório para armazenar a configuração da instância:
 
 ```text
-Editor is now accessible via:
+n8n-local/
+├── compose.yaml
+└── .env
+```
+
+O arquivo `.env` contém segredos locais e não deve ser enviado ao GitHub.
+
+## 4. Configuração com Docker Compose
+
+Crie `compose.yaml`:
+
+```yaml
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n-local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      TZ: America/Belem
+      GENERIC_TIMEZONE: America/Belem
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:
+```
+
+A vinculação `127.0.0.1:5678:5678` limita o acesso à máquina local. Para uma implantação acessível pela internet, são necessários HTTPS, proxy reverso, domínio e configurações adicionais de segurança.
+
+## 5. Chave de criptografia
+
+Gere uma chave longa no PowerShell:
+
+```powershell
+$bytes = New-Object byte[] 32
+[Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+[Convert]::ToBase64String($bytes)
+```
+
+Crie `.env`:
+
+```dotenv
+N8N_ENCRYPTION_KEY=SUBSTITUA_PELA_CHAVE_GERADA
+```
+
+Guarde essa chave com segurança. Alterá-la ou perdê-la pode impedir a leitura de credenciais já criptografadas pela instância.
+
+## 6. Inicialização
+
+No diretório que contém `compose.yaml`, execute:
+
+```powershell
+docker compose up -d
+docker compose ps
+docker compose logs -f n8n
+```
+
+Quando o serviço estiver pronto, acesse:
+
+```text
 http://localhost:5678
 ```
 
-No exemplo deste projeto, o container foi criado com um nome automático, como `nervous_aryabhata`. O nome pode ser diferente em outro computador e não interfere no funcionamento.
+Na primeira execução, conclua o cadastro da conta proprietária local.
 
-## 2. Abrir o editor do n8n
+## 7. Operações do ciclo de vida
 
-Com o container em execução, abra o navegador e acesse:
+```powershell
+# Iniciar ou recriar conforme a configuração
+docker compose up -d
 
-```text
-http://localhost:5678
+# Parar sem remover container e volume
+docker compose stop
+
+# Reiniciar
+docker compose restart n8n
+
+# Ver logs
+docker compose logs -f n8n
+
+# Encerrar e remover o container, preservando o volume
+docker compose down
 ```
 
-Também é possível clicar diretamente no link exibido nos logs do Docker Desktop.
+Não execute `docker compose down -v` sem backup. A opção `-v` remove o volume nomeado e pode apagar workflows, configurações e credenciais da instância.
 
-Na primeira utilização, o n8n pode solicitar a criação da conta administradora local. Essa conta pertence apenas à instalação executada no seu computador.
+## 8. Identificar conflitos entre containers
 
-## 3. Entender por que o projeto não apareceu automaticamente
+Somente um processo pode publicar a mesma porta local. Liste os containers:
 
-Quando os logs mostram algo semelhante a:
-
-```text
-Processed 0 draft workflows, 0 published workflows
+```powershell
+docker ps -a --filter ancestor=n8nio/n8n:latest
+docker ps -a --filter ancestor=docker.n8n.io/n8nio/n8n
 ```
 
-isso significa que a instalação local ainda não possui workflows salvos.
+Verifique portas:
 
-O workflow `Hashtag_Aula_1`, criado em outra instalação do n8n, precisa ser exportado para um arquivo `.json` e depois importado na instalação local.
-
-## 4. Exportar o workflow da instalação original
-
-Na instalação em que o projeto está salvo:
-
-1. Abra o workflow `Hashtag_Aula_1`.
-2. Clique no menu de três pontos, no canto superior direito.
-3. Selecione **Download**, **Export** ou **Download workflow**, conforme a versão do n8n.
-4. Salve o arquivo no computador.
-5. Use um nome claro, por exemplo:
-
-```text
-agente-ia-resposta-emails-n8n.json
+```powershell
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 ```
 
-Antes de publicar esse arquivo no GitHub, revise o conteúdo para garantir que não existam e-mails pessoais, tokens, chaves de API, dados de clientes ou outras informações privadas.
+Se outro container estiver usando `5678`, pare-o:
 
-## 5. Importar o workflow no n8n local
+```powershell
+docker stop NOME_DO_CONTAINER
+```
 
-Acesse `http://localhost:5678` e siga estes passos:
+Como alternativa, altere a porta externa:
 
-1. Entre no espaço **Personal**.
-2. Crie um workflow novo ou abra o menu de opções.
-3. Selecione **Import from File** ou **Importar de arquivo**.
-4. Escolha o arquivo JSON exportado.
-5. Aguarde o workflow aparecer no editor.
-6. Salve o workflow.
+```yaml
+ports:
+  - "127.0.0.1:5679:5678"
+```
 
-Em algumas versões, também é possível arrastar o arquivo `.json` diretamente para o editor do n8n.
+Nesse caso, use `http://localhost:5679`.
 
-## 6. Configurar novamente as credenciais
+## 9. Importar o Projeto 1
 
-As credenciais da instalação anterior não ficam disponíveis automaticamente na instalação local. Depois da importação, abra os nodes que dependem de autenticação e selecione ou crie novas credenciais.
+O workflow sanitizado está em:
 
-Neste projeto, revise principalmente:
+```text
+projetos/projeto-01-agente-email/workflow/agente-ia-resposta-emails-n8n.json
+```
 
-- **Gmail Trigger**: credencial OAuth do Gmail;
-- **Google Gemini Chat Model**: chave ou credencial do Gemini;
-- **Reply to a message**: credencial do Gmail usada para responder à mensagem.
+No editor do n8n:
 
-Nunca escreva senhas ou chaves diretamente no workflow. Use o sistema de credenciais do próprio n8n.
+1. Abra um projeto ou workflow vazio.
+2. Use **Import from File**.
+3. Selecione o arquivo JSON.
+4. Salve o workflow.
+5. Configure novas credenciais nos nodes:
+   - `Gmail Trigger`;
+   - `Google Gemini Chat Model`;
+   - `Reply to a message`.
+6. Revise a condição do node `If`.
+7. Execute testes manuais antes da ativação.
 
-### Gmail e endereço de redirecionamento
+A versão publicada está desativada e não contém credenciais funcionais.
 
-Ao criar uma credencial OAuth do Gmail, o n8n mostra uma URL de redirecionamento. Caso você use credenciais próprias do Google Cloud, essa URL deve ser cadastrada como URI de redirecionamento autorizada no projeto do Google.
+## 10. Credenciais e OAuth do Gmail
 
-Para uma instalação local, ela normalmente começa com:
+As credenciais pertencem à instância do n8n e não são transportadas como segredos funcionais no workflow sanitizado. Configure uma nova credencial OAuth no node do Gmail.
+
+Quando o Google Cloud solicitar uma URI de redirecionamento, copie exatamente a URL exibida pelo n8n. Em uma instalação local padrão, o formato costuma ser:
 
 ```text
 http://localhost:5678/rest/oauth2-credential/callback
 ```
 
-Use sempre o endereço exibido na tela da credencial do seu n8n, pois ele é a referência correta para a sua instalação.
+Não publique `client_secret`, tokens OAuth, chaves do Gemini ou o arquivo `.env`.
 
-## 7. Testar o workflow com segurança
+## 11. Testes seguros
 
-Antes de publicar ou ativar o workflow:
+Antes de ativar o workflow:
 
-1. Confirme que todos os nodes estão conectados corretamente.
-2. Use uma conta e mensagens de teste.
-3. Execute manualmente o workflow.
-4. Confira a saída do node **AI Agent**.
-5. Verifique se a resposta gerada está correta antes de permitir o envio automático.
-6. Somente depois dos testes, publique ou ative o workflow.
+- utilize contas e mensagens de teste;
+- confirme que o filtro não processa mensagens indevidas;
+- valide a saída HTML do agente;
+- teste mensagens incompletas, spam e tentativas de manipulação do prompt;
+- verifique se o contexto da memória está separado por `threadId`;
+- prefira criação de rascunho ou aprovação humana antes do envio automático em ambientes reais.
 
-Para um projeto de portfólio, é mais seguro configurar o fluxo para criar um **rascunho** ou exigir revisão humana antes de enviar uma resposta real.
+## 12. Backup
 
-## 8. Evitar a perda dos workflows ao excluir o container
-
-Os dados do n8n devem ser armazenados fora da camada temporária do container. Para isso, use um volume persistente ligado ao diretório:
-
-```text
-/home/node/.n8n
-```
-
-No Docker Desktop, abra o container e verifique as abas **Inspect**, **Bind mounts** ou **Volumes**. Procure um mapeamento para `/home/node/.n8n`.
-
-Se não existir um volume, não exclua o container antes de exportar os workflows. A exclusão de um container sem armazenamento persistente pode remover os dados salvos nele.
-
-## 9. Forma recomendada de executar com volume persistente
-
-No PowerShell, crie primeiro um volume:
+Liste o volume:
 
 ```powershell
-docker volume create n8n_data
+docker volume ls
+docker volume inspect n8n-local_n8n_data
 ```
 
-Depois, execute o n8n usando esse volume:
+Uma forma de backup do volume para o diretório atual é:
 
 ```powershell
-docker run --name n8n-local `
-  -p 5678:5678 `
-  -e GENERIC_TIMEZONE=America/Belem `
-  -e TZ=America/Belem `
-  -e N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true `
-  -v n8n_data:/home/node/.n8n `
-  docker.n8n.io/n8nio/n8n
+docker run --rm `
+  -v n8n-local_n8n_data:/data `
+  -v "${PWD}:/backup" `
+  alpine `
+  tar czf /backup/n8n-data-backup.tar.gz -C /data .
 ```
 
-Esse comando:
+O nome real do volume pode variar conforme o nome da pasta do projeto Compose. Confirme-o com `docker volume ls`.
 
-- cria um container chamado `n8n-local`;
-- disponibiliza o editor na porta `5678`;
-- configura o fuso horário de Belém;
-- salva workflows, configurações e credenciais criptografadas no volume `n8n_data`.
+Além do backup do volume, exporte periodicamente os workflows em JSON. Não publique backups porque eles podem conter credenciais criptografadas, dados de execução e informações pessoais.
 
-Para executar o container em segundo plano, acrescente `-d` ao comando:
+## 13. Atualização da imagem
 
 ```powershell
-docker run -d --name n8n-local `
-  -p 5678:5678 `
-  -e GENERIC_TIMEZONE=America/Belem `
-  -e TZ=America/Belem `
-  -e N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true `
-  -v n8n_data:/home/node/.n8n `
-  docker.n8n.io/n8nio/n8n
+docker compose pull
+docker compose up -d
+docker image prune
 ```
 
-Depois da criação inicial, use estes comandos:
+Antes de atualizar, faça backup do volume e consulte as notas de versão, especialmente em atualizações maiores.
+
+## 14. Diagnóstico
+
+### Editor não abre
 
 ```powershell
-# Iniciar
-
-docker start n8n-local
-
-# Parar
-
-docker stop n8n-local
-
-# Ver os logs
-
-docker logs -f n8n-local
+docker compose ps
+docker compose logs --tail 200 n8n
+Test-NetConnection localhost -Port 5678
 ```
 
-## 10. Solução de problemas
-
-### O endereço `localhost:5678` não abre
-
-Confira se:
-
-- o Docker Desktop está aberto;
-- o status do container é **Running**;
-- a porta `5678` está publicada;
-- outro programa não está usando a mesma porta.
-
-No PowerShell, execute:
+### Container reinicia continuamente
 
 ```powershell
-docker ps
+docker inspect n8n-local
+docker compose logs --tail 300 n8n
 ```
 
-Na coluna **PORTS**, deve aparecer algo semelhante a:
+Verifique sintaxe do `.env`, permissões do volume, variáveis obrigatórias e conflitos de porta.
 
-```text
-0.0.0.0:5678->5678/tcp
-```
+### Workflow importado apresenta nodes desconectados de credenciais
 
-### O workflow foi importado, mas os nodes mostram erro
+Esse comportamento é esperado na versão pública. Abra cada node e selecione credenciais locais válidas.
 
-Abra cada node com erro e configure novamente as credenciais. Os segredos da instalação original não são transferidos como credenciais funcionais para a nova instalação.
+### Workflow desapareceu
 
-### O workflow desapareceu depois de recriar o container
+Confirme se o container atual utiliza o mesmo volume persistente. Containers diferentes podem apontar para volumes diferentes e, por isso, apresentar conjuntos distintos de workflows.
 
-Provavelmente o container foi criado sem volume persistente. Recrie-o usando `n8n_data:/home/node/.n8n` e importe novamente o arquivo JSON salvo.
+## 15. Checklist
 
-### A porta 5678 já está ocupada
+- [ ] Docker Desktop ativo;
+- [ ] apenas um container usando a porta escolhida;
+- [ ] volume persistente montado em `/home/node/.n8n`;
+- [ ] `N8N_ENCRYPTION_KEY` definida em `.env`;
+- [ ] `.env` fora do Git;
+- [ ] workflow importado;
+- [ ] credenciais configuradas localmente;
+- [ ] testes realizados com dados fictícios;
+- [ ] workflow ativado somente após validação;
+- [ ] backup criado antes de atualizações.
 
-Use outra porta no computador, mantendo a porta interna do n8n:
+## Referências oficiais
 
-```powershell
-docker run -d --name n8n-local `
-  -p 5679:5678 `
-  -v n8n_data:/home/node/.n8n `
-  docker.n8n.io/n8nio/n8n
-```
-
-Nesse caso, acesse:
-
-```text
-http://localhost:5679
-```
-
-## 11. Checklist final
-
-- [ ] Docker Desktop aberto;
-- [ ] container do n8n com status **Running**;
-- [ ] editor acessível pelo navegador;
-- [ ] workflow exportado em formato JSON;
-- [ ] workflow importado no n8n local;
-- [ ] credenciais do Gmail configuradas novamente;
-- [ ] credencial do Gemini configurada novamente;
-- [ ] teste realizado com dados fictícios;
-- [ ] volume persistente configurado;
-- [ ] nenhuma senha ou chave publicada no GitHub.
-
-## Referências
-
-- Documentação oficial do n8n sobre instalação com Docker: <https://docs.n8n.io/hosting/installation/docker/>
-- Documentação oficial sobre importação e exportação de workflows: <https://docs.n8n.io/workflows/export-import/>
-- Documentação oficial sobre segurança: <https://docs.n8n.io/hosting/securing/>
+- <https://docs.n8n.io/hosting/installation/docker/>
+- <https://docs.n8n.io/workflows/export-import/>
+- <https://docs.n8n.io/hosting/configuration/configuration-examples/encryption-key/>
+- <https://docs.n8n.io/hosting/configuration/configuration-examples/time-zone/>
+- <https://docs.n8n.io/hosting/securing/>
