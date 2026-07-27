@@ -1,0 +1,26 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets.json
+
+# n8n local data and backups
+.n8n/
+n8n_data/
+*.sqlite
+*.sqlite3
+*.tar.gz
+
+# Logs and temporary files
+*.log
+tmp/
+temp/
+
+# Operating systems and editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
