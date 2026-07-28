@@ -57,9 +57,7 @@ Para executar os workflows com Docker Desktop, consulte:
 
 - [Executar e importar workflows do n8n com Docker](docs/abrir-projeto-n8n-com-docker.md)
 
-## Materiais da imersão
-
-Os materiais disponibilizados pelo curso são mantidos fora deste repositório. O acesso controlado pode ser solicitado por meio desta pasta do Google Drive:
+## Materiais de estudo
 
 <https://drive.google.com/drive/folders/1k5Efky38YB1H9qrVbMEbBb3o1iOBUFVf?usp=drive_link>
 
