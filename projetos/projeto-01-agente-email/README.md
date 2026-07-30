@@ -9,7 +9,10 @@ Automatizar a triagem inicial de mensagens recebidas por Gmail, identificar soli
 ## Fluxo
 
 1. O **Gmail Trigger** monitora novas mensagens.
-2. O node **If** aplica uma condição de filtragem.
+2. O node **If** aplica uma condição de filtragem (na versão publicada, uma condição de
+   exemplo — verifica se o endereço do remetente contém "gmail" — que deve ser substituída
+   pela regra de negócio real antes de qualquer uso além de demonstração, ex.: domínio do
+   cliente, assunto ou rótulo do Gmail).
 3. O **AI Agent** interpreta o conteúdo do e-mail.
 4. O **Google Gemini Chat Model** gera a resposta conforme as regras do prompt.
 5. O **Simple Memory** usa o `threadId` do Gmail para separar o contexto de cada conversa.
