@@ -1,41 +1,41 @@
-# Imersão Agentes de IA e n8n
+# AI Agents and n8n Immersion
 
-![n8n](https://img.shields.io/badge/n8n-Automações-EA4B71?style=for-the-badge&logo=n8n&logoColor=white)
-![Inteligência Artificial](https://img.shields.io/badge/IA-Agentes-6C63FF?style=for-the-badge)
-![Docker](https://img.shields.io/badge/Docker-Ambiente%20local-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Status](https://img.shields.io/badge/Status-Em%20desenvolvimento-F2C94C?style=for-the-badge)
+![n8n](https://img.shields.io/badge/n8n-Automation-EA4B71?style=for-the-badge&logo=n8n&logoColor=white)
+![Artificial Intelligence](https://img.shields.io/badge/AI-Agents-6C63FF?style=for-the-badge)
+![Docker](https://img.shields.io/badge/Docker-Local%20Environment-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Status](https://img.shields.io/badge/Status-In%20Development-F2C94C?style=for-the-badge)
 
-Repositório de projetos desenvolvidos durante a **Imersão Agentes de IA e n8n**, da Hashtag Treinamentos. Cada aula gera um projeto independente, documentado e adaptado para um cenário próprio.
+A collection of projects developed during Hashtag Treinamentos' **AI Agents and n8n Immersion**. Each lesson produces an independent project that is documented and adapted to a distinct scenario.
 
-Este repositório publica somente implementações autorais, workflows sanitizados, prompts desenvolvidos para os projetos e documentação técnica. Apostilas, gabaritos e materiais didáticos do curso não são reproduzidos aqui.
+This repository contains only original implementations, sanitized workflows, project-specific prompts, and technical documentation. Course handouts, answer keys, and proprietary teaching materials are not reproduced.
 
-## Projetos
+## Projects
 
-| Aula | Projeto | Tecnologias | Status |
+| Lesson | Project | Technologies | Status |
 |---|---|---|---|
-| 1 | [Agente de IA para atendimento inicial por e-mail](projetos/projeto-01-agente-email/) | n8n, Gmail, Google Gemini, Docker | Concluído |
-| 2 | Em breve | — | Planejado |
-| 3 | Em breve | — | Planejado |
-| 4 | Em breve | — | Planejado |
+| 1 | [AI agent for initial email support](projetos/projeto-01-agente-email/) | n8n, Gmail, Google Gemini, Docker | Completed |
+| 2 | Coming soon | — | Planned |
+| 3 | Coming soon | — | Planned |
+| 4 | Coming soon | — | Planned |
 
-## Projeto 1
+## Project 1
 
-O primeiro projeto monitora mensagens do Gmail, aplica uma condição de filtragem e utiliza um agente com Google Gemini para produzir respostas de atendimento inicial. A implementação foi adaptada para solicitações relacionadas a web design.
+The first project monitors Gmail messages, applies a filter condition, and uses a Google Gemini agent to draft initial customer-support responses. The implementation was adapted for web-design inquiries.
 
-Principais aspectos trabalhados:
+Key concepts:
 
-- integração entre Gmail, n8n e Google Gemini;
-- prompt com limites de autoridade comercial;
-- saída em HTML compatível com Gmail;
-- separação de contexto por conversa usando `threadId`;
-- regras contra instruções maliciosas no conteúdo do e-mail;
-- sanitização do workflow antes da publicação.
+- Gmail, n8n, and Google Gemini integration
+- A prompt with clear limits on commercial authority
+- Gmail-compatible HTML output
+- Conversation context separated by `threadId`
+- Protections against malicious instructions embedded in email content
+- Workflow sanitization before publication
 
-![Workflow do primeiro projeto](assets/imagens/primeiro_projeto.png)
+![First project workflow](assets/imagens/primeiro_projeto.png)
 
-Acesse a documentação completa em [`projetos/projeto-01-agente-email`](projetos/projeto-01-agente-email/).
+Read the complete documentation in [`projetos/projeto-01-agente-email`](projetos/projeto-01-agente-email/).
 
-## Estrutura
+## Repository Structure
 
 ```text
 .
@@ -51,20 +51,20 @@ Acesse a documentação completa em [`projetos/projeto-01-agente-email`](projeto
 └── README.md
 ```
 
-## Execução local
+## Local Execution
 
-Para executar os workflows com Docker Desktop, consulte:
+For instructions on running the workflows with Docker Desktop, see:
 
-- [Executar e importar workflows do n8n com Docker](docs/abrir-projeto-n8n-com-docker.md)
+- [Run and import n8n workflows with Docker](docs/abrir-projeto-n8n-com-docker.md)
 
-## Materiais de estudo
+## Study Materials
 
 <https://drive.google.com/drive/folders/1k5Efky38YB1H9qrVbMEbBb3o1iOBUFVf?usp=drive_link>
 
-## Segurança
+## Security
 
-Nenhuma credencial, token, chave de API ou mensagem real deve ser versionada. Os workflows publicados são revisados para remover dados de execução, referências de credenciais e informações pessoais.
+Never commit credentials, tokens, API keys, or real messages. Published workflows are reviewed to remove execution data, credential references, and personal information.
 
-## Autoria
+## Author
 
-Projetos desenvolvidos e adaptados por **Liane Ferreira Heidemann** para estudo e portfólio em automação, integração de sistemas e agentes de IA.
+Projects developed and adapted by **Liane Ferreira Heidemann** for learning and portfolio work in automation, systems integration, and AI agents.
